@@ -156,5 +156,31 @@ Here it is again with a different random walk using the same process
 
 Here's what you get after running it for 10,000 iterations (about a second on my laptop)
 
+
+```
+## Warning: Removed 20 rows containing non-finite values (stat_density2d).
+```
+
 ![plot of chunk MH3](figure/MH3.png) 
 
+
+
+## Practical issues:
+
+Here's a somewhat opinionated take on things to look out for when you're doing MCMC.
+
+* **Initial values:** The chain has to start somewhere, and your initial samples will tend to cluster near that starting value.  That's not very random! Opinions differ about how to deal with this issue.  If you run the chain long enough, it doesn't really matter, since the first few samples will get swamped.  If you start the chain near a mode of the distribution or with a sample from a previous MCMC run, it might not introduce much bias, since the chain was probably going to be spending a bunch of time there anyway.  If it still bothers you, there's nothing wrong with throwing away some of the early samples (which is called "discarding the burn-in period").
+
+* **Choosing a proposal distribution:** A lot of the work that's been done on MCMC over the past 50 years involves finding better proposal distributions.
+
+  * My recollection is that you want to tune your Metropolis sampler so that it accepts about 2/3 of the time.  Much more than that and you're not trying enough new things, so your samples are too correlated; much less than that and you're wasting your CPU.
+
+  * If you can decompose your probability distribution into *conditional probabilities*, then the best approach is often an alternative to Metropolis sampling called **Gibbs sampling**. This is what a lot of the automatic MCMC tools like BUGS and JAGS use.  Gibbs sampling doesn't need any fine-tuning and is always able to accept its proposals, but it can't move in more than one dimension at a time if the dimensions are correlated. Gibbs samplers are also very straightforward and can be written in just a few lines of code.
+  
+  * An even better approach in many high-dimensional cases is called **Hamiltonian Monte Carlo** or (**Hybrid Monte Carlo**).  It makes proposals based on physics model with sample particles rolling along the distribution like a big mountain range.  The physics simulations can be computationally expensive, but the resulting samples are much more independent.  It's also much less sensitive to correlations among your variables that could mess up Metropolis and Gibbs sampling, since the physics doesn't care about that as much. Once you have a proposal, the decision to accept it looks like the Metropolis rule.
+  
+  * One of the hardest things for MCMC to deal with is multi-modal distributions, since the Markov chain might not find its way between two hills if there's a big valley in between.  Often, you won't even know there's a second mode, and that your sampler only found a tiny part of the space. One thing that can help enormously is temporarily "melting down" the distribution, so it's flatter and easier to explore (e.g. by adding thermal noise to your sampler).  You don't actually keep any samlpes from the "melted" distribution, since it's not the distribution you're actually interested in, but this process can open up pathways that would otherwise be blocked. Depending on the details of how you do this, the decision to accept one of these proposals often looks like the Metropolis rule.
+  
+  * You can usually mix-and-match samplers, e.g. by taking 100 small steps with Metropolis, then taking a big, computationally expensive step with something else, then taking another 100 small steps with Metropolis, etc.
+  
+* **Knowing when to stop:** There are convergence diagnostics and measures of your effective sample size, but no one is really sure how good they are.  To be safe, it's often best to run the chains much longer than you think you need to, and to do many runs from different starting points. The theorems about this stuff mainly just talk about what will happen if you run the chain for an infinitely long time.
