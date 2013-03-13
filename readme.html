@@ -244,13 +244,13 @@ quantile(accepted.samples, probs = seq(0, 1, length = 25))
 
 <p>That worked pretty well, but it was kind of inefficient&ndash;we ended up throwing away more than 90% of our sampling effort because the darts sailed right over the probability distribution.</p>
 
-<p>Of course, this is a toy example.  It turns out that you may end up throwing away exponentially more attempts per successful sample as the number of dimensions in your data goes up.  So hardly anyone uses rejection sampling anymore&ndash;that&#39;s where the Markov chains come in.</p>
+<p>Of course, this is a toy example.  It turns out that you may end up throwing away exponentially more attempts per successful sample as the number of dimensions in your data goes up.  So hardly anyone uses rejection sampling without a good reason&ndash;that&#39;s where the Markov chains come in.</p>
 
 <h2>Markov chain Monte Carlo</h2>
 
 <p>Most of our discarded samples came from the tails of the distribution, where the acceptance probability is basically zero.  We could increase the number of samples we keep by spending more time in the middle of the distribution, where the acceptance probabilities are much higher.</p>
 
-<p>But if all we did was concentrate our dart-throwing efforts there, then we&#39;d end up with heavily biased samples&ndash;we don&#39;t find <em>any</em> probability mass in areas where we don&#39;t look.  Also, even if we could correct for that, we won&#39;t always know where to concentrate our efforts.  So we&#39;ll usually need something more automatic.</p>
+<p>But if all we did was concentrate our dart-throwing efforts there, then we&#39;d end up with heavily biased samples&ndash;we don&#39;t find <em>any</em> probability mass in areas where we don&#39;t look.  Also, even if we could correct for that issue, we won&#39;t always know where to concentrate our efforts.  So we&#39;ll usually need something more automatic.</p>
 
 <p>That&#39;s where the Markov chains come in.  MCMC has exactly the same goal as our rejection sampler, but it has more sophisticated ways of deciding where to sample.  That way, we can get a decent number of samples in a reasonable amount of time.  The downside is that the samples are correlated, so you might need a lot more of them before you&#39;ve explored the whole distribution.  And you usually won&#39;t know when it&#39;s &ldquo;done&rdquo;&ndash;the theorems usually just say it&#39;ll work if you run the process for an infinitely long time.</p>
 
@@ -275,7 +275,7 @@ gaussian.plot
 
 <p>Let&#39;s take a random walk along X and Y, collecting samples in proportion to their probability.  This is just like the rejection sampler, but we&#39;ll tend to throw our darts in the neighborhood of our last accepted proposal, and the acceptance rule is a bit more complicated.</p>
 
-<p>Here&#39;s a sampler called the &ldquo;Metropolis&rdquo; algorithm, although Wikipedia claims Metropolis wasn&#39;t really involved.</p>
+<p>Here&#39;s a sampler called the &ldquo;Metropolis&rdquo; algorithm, although Wikipedia claims Mr. Metropolis wasn&#39;t really involved.</p>
 
 <pre><code class="r">maxit = 50
 
@@ -297,6 +297,8 @@ for (i in 2:maxit) {
     if (rbinom(1, size = 1, prob = min(ratio, 1))) {
         samples[i, ] = proposal
     } else {
+        # If you don&#39;t accept the proposal, just keep what you had in the last
+        # time step
         samples[i, ] = samples[i - 1, ]
     }
 
@@ -332,7 +334,7 @@ gaussian.plot + geom_path(mapping = aes(x = samples[, &quot;x&quot;], y = sample
 <ul>
 <li>My recollection is that you want to tune your Metropolis sampler so that it accepts about 2/3 of the time.  Much more than that and you&#39;re not trying enough new things, so your samples are too correlated; much less than that and you&#39;re wasting your CPU.</li>
 <li>If you can decompose your probability distribution into <em>conditional probabilities</em>, then the best approach is often an alternative to Metropolis sampling called <strong>Gibbs sampling</strong>. This is what a lot of the automatic MCMC tools like BUGS and JAGS use.  Gibbs sampling doesn&#39;t need any fine-tuning and is always able to accept its proposals, but it can&#39;t move in more than one dimension at a time if the dimensions are correlated. Gibbs samplers are also very straightforward and can be written in just a few lines of code.</li>
-<li>An even better approach in many high-dimensional cases is called <strong>Hamiltonian Monte Carlo</strong> or (<strong>Hybrid Monte Carlo</strong>).  It makes proposals based on physics model with sample particles rolling along the distribution like a big mountain range.  The physics simulations can be computationally expensive, but the resulting samples are much more independent.  It&#39;s also much less sensitive to correlations among your variables that could mess up Metropolis and Gibbs sampling, since the physics doesn&#39;t care about that as much. Once you have a proposal, the decision to accept it looks like the Metropolis rule.</li>
+<li>An even better approach in many high-dimensional cases is called <strong>Hamiltonian Monte Carlo</strong> (or <strong>Hybrid Monte Carlo</strong>).  It makes proposals based on physics model with sample particles rolling along the distribution like a big mountain range.  The physics simulations can be computationally expensive, but the resulting samples are much more independent.  It&#39;s also much less sensitive to correlations among your variables that could mess up Metropolis and Gibbs sampling, since the physics doesn&#39;t care about that as much. Once you have a proposal, the decision to accept it looks like the Metropolis rule.</li>
 <li>One of the hardest things for MCMC to deal with is multi-modal distributions, since the Markov chain might not find its way between two hills if there&#39;s a big valley in between.  Often, you won&#39;t even know there&#39;s a second mode, and that your sampler only found a tiny part of the space. One thing that can help enormously is temporarily &ldquo;melting down&rdquo; the distribution, so it&#39;s flatter and easier to explore (e.g. by adding thermal noise to your sampler).  You don&#39;t actually keep any samlpes from the &ldquo;melted&rdquo; distribution, since it&#39;s not the distribution you&#39;re actually interested in, but this process can open up pathways that would otherwise be blocked. Depending on the details of how you do this, the decision to accept one of these proposals often looks like the Metropolis rule.</li>
 <li>You can usually mix-and-match samplers, e.g. by taking 100 small steps with Metropolis, then taking a big, computationally expensive step with something else, then taking another 100 small steps with Metropolis, etc.</li>
 </ul></li>
