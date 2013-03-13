@@ -79,13 +79,13 @@ Intuitively, it should be clear that this works: wherever the curve is tallest, 
 
 That worked pretty well, but it was kind of inefficient--we ended up throwing away more than 90% of our sampling effort because the darts sailed right over the probability distribution.
 
-Of course, this is a toy example.  It turns out that you may end up throwing away exponentially more attempts per successful sample as the number of dimensions in your data goes up.  So hardly anyone uses rejection sampling anymore--that's where the Markov chains come in.
+Of course, this is a toy example.  It turns out that you may end up throwing away exponentially more attempts per successful sample as the number of dimensions in your data goes up.  So hardly anyone uses rejection sampling without a good reason--that's where the Markov chains come in.
 
 ## Markov chain Monte Carlo
 
 Most of our discarded samples came from the tails of the distribution, where the acceptance probability is basically zero.  We could increase the number of samples we keep by spending more time in the middle of the distribution, where the acceptance probabilities are much higher.
 
-But if all we did was concentrate our dart-throwing efforts there, then we'd end up with heavily biased samples--we don't find *any* probability mass in areas where we don't look.  Also, even if we could correct for that, we won't always know where to concentrate our efforts.  So we'll usually need something more automatic.
+But if all we did was concentrate our dart-throwing efforts there, then we'd end up with heavily biased samples--we don't find *any* probability mass in areas where we don't look.  Also, even if we could correct for that issue, we won't always know where to concentrate our efforts.  So we'll usually need something more automatic.
 
 That's where the Markov chains come in.  MCMC has exactly the same goal as our rejection sampler, but it has more sophisticated ways of deciding where to sample.  That way, we can get a decent number of samples in a reasonable amount of time.  The downside is that the samples are correlated, so you might need a lot more of them before you've explored the whole distribution.  And you usually won't know when it's "done"--the theorems usually just say it'll work if you run the process for an infinitely long time.
 
@@ -106,7 +106,7 @@ gaussian.plot
 
 Let's take a random walk along X and Y, collecting samples in proportion to their probability.  This is just like the rejection sampler, but we'll tend to throw our darts in the neighborhood of our last accepted proposal, and the acceptance rule is a bit more complicated.
 
-Here's a sampler called the "Metropolis" algorithm, although Wikipedia claims Metropolis wasn't really involved.
+Here's a sampler called the "Metropolis" algorithm, although Wikipedia claims Mr. Metropolis wasn't really involved.
 
 ```{r MH}
 maxit = 50
@@ -129,6 +129,7 @@ for(i in 2:maxit){
   if(rbinom(1, size = 1, prob = min(ratio, 1))){
     samples[i, ] = proposal
   }else{
+    # If you don't accept the proposal, just keep what you had in the last time step
     samples[i, ] = samples[i - 1, ]
   }
     
@@ -215,7 +216,7 @@ Here's a somewhat opinionated take on things to look out for when you're doing M
 
   * If you can decompose your probability distribution into *conditional probabilities*, then the best approach is often an alternative to Metropolis sampling called **Gibbs sampling**. This is what a lot of the automatic MCMC tools like BUGS and JAGS use.  Gibbs sampling doesn't need any fine-tuning and is always able to accept its proposals, but it can't move in more than one dimension at a time if the dimensions are correlated. Gibbs samplers are also very straightforward and can be written in just a few lines of code.
   
-  * An even better approach in many high-dimensional cases is called **Hamiltonian Monte Carlo** or (**Hybrid Monte Carlo**).  It makes proposals based on physics model with sample particles rolling along the distribution like a big mountain range.  The physics simulations can be computationally expensive, but the resulting samples are much more independent.  It's also much less sensitive to correlations among your variables that could mess up Metropolis and Gibbs sampling, since the physics doesn't care about that as much. Once you have a proposal, the decision to accept it looks like the Metropolis rule.
+  * An even better approach in many high-dimensional cases is called **Hamiltonian Monte Carlo** (or **Hybrid Monte Carlo**).  It makes proposals based on physics model with sample particles rolling along the distribution like a big mountain range.  The physics simulations can be computationally expensive, but the resulting samples are much more independent.  It's also much less sensitive to correlations among your variables that could mess up Metropolis and Gibbs sampling, since the physics doesn't care about that as much. Once you have a proposal, the decision to accept it looks like the Metropolis rule.
   
   * One of the hardest things for MCMC to deal with is multi-modal distributions, since the Markov chain might not find its way between two hills if there's a big valley in between.  Often, you won't even know there's a second mode, and that your sampler only found a tiny part of the space. One thing that can help enormously is temporarily "melting down" the distribution, so it's flatter and easier to explore (e.g. by adding thermal noise to your sampler).  You don't actually keep any samlpes from the "melted" distribution, since it's not the distribution you're actually interested in, but this process can open up pathways that would otherwise be blocked. Depending on the details of how you do this, the decision to accept one of these proposals often looks like the Metropolis rule.
   
