@@ -19,21 +19,27 @@ Other probability distributions--such as distributions over parameters in a comp
 
 ### Example:
 
-Here's an ugly probability distribution.  Note that, in addition to being wiggly, we don't actually know how to scale the y-axis so that the distribution sums to 1.
-  
-```{r show-plot, echo = FALSE}
+Here's an ugly function that we could treat as a probability distribution.  Note that, in addition to being wiggly, we don't actually know how to scale the y-axis so that the distribution sums to 1.
+
+```{r f}
 f = function(x){
   (sin(.2 * x^3) + sin(x^2)/5 + 2.5 + sin(10 * x)/2) * dnorm(x, mean = 1)
 }
 
-xs = seq(-6, 6, length = 500)
+min.x = -6
+max.x = 6
+```
+
+
+```{r show-plot, echo = FALSE}
+xs = seq(min.x, max.x, length = 500)
 
 plot(
   xs, 
   f(xs), 
   type = "n",
   xlim = range(xs),
-  ylim = c(0, max(f(xs) + 1/2)),
+  ylim = c(0, 2),
   xlab = "x",
   ylab = "f(x)",
   yaxs = "i",
@@ -57,10 +63,10 @@ Even if you knew the equation that generated that thing, and you remembered ever
 
 ```{r rejection-sampler}
 N = 10000000
-ceiling = max(f(xs) + 1)
+ceiling = 2
 
 # Step 1: Throw N darts (uniformly distributed x-y pairs) at the plot above.
-test.xs = runif(N, min = min(xs), max = max(xs))
+test.xs = runif(N, min = min.x, max = max.x)
 test.ys = runif(N, min = 0, max = ceiling)
 
 
@@ -68,17 +74,17 @@ test.ys = runif(N, min = 0, max = ceiling)
 accepted.samples = test.xs[test.ys < f(test.xs)]
 
 # Step 3: Study the samples however you want
-hist(accepted.samples, breaks = 150, xlim = range(xs), freq = FALSE)
+hist(accepted.samples, breaks = 150, xlim = c(min.x, max.x), freq = FALSE)
 
 mean(accepted.samples)
 
-quantile(accepted.samples, probs = seq(0, 1, length = 25))
+quantile(accepted.samples, probs = seq(0, 1, length = 10))
 
 ```
 
 Intuitively, it should be clear that this works: wherever the curve is tallest, there's a higher probability that the darts will be retained.
 
-That worked pretty well, but it was kind of inefficient--we ended up throwing away more than 90% of our sampling effort because the darts sailed right over the probability distribution.
+That worked pretty well, but it was kind of inefficient--we ended up throwing away almost 90% of our sampling effort because the darts sailed right over the probability distribution.
 
 Of course, this is a toy example.  It turns out that you may end up throwing away exponentially more attempts per successful sample as the number of dimensions in your data goes up.  So hardly anyone uses rejection sampling without a good reason--that's where the Markov chains come in.
 
@@ -92,12 +98,13 @@ That's where the Markov chains come in.  MCMC has exactly the same goal as our r
 
 Let's see what happens if we try this out on a simpler distribution in 2D.
 
-```{r Gaussian}
+```{r Gaussian, echo = TRUE}
 library(MASS)
 library(ggplot2)
 lik = function(x, y){dnorm(x-3) * dnorm(y - x + 2)}
 
-grid = expand.grid(x = xs, y = xs)
+grid.values = seq(min.x, max.x, length = 500)
+grid = expand.grid(x = grid.values, y = grid.values)
 z = lik(grid$x, grid$y)
 
 gaussian.plot = ggplot(data = grid, aes(x = x, y = y)) + geom_raster(aes(fill = z)) + scale_fill_gradient2() + coord_equal()

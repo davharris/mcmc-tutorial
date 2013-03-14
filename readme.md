@@ -4,6 +4,7 @@
 # Monte Carlo methods in statistics and Markov chain Monte Carlo
 
 Dave Harris
+
 Davis R Users Group, 2013-3-13
 
 ## The goal: Learn about a probability distribution
@@ -17,8 +18,20 @@ Other probability distributions--such as distributions over parameters in a comp
 
 ### Example:
 
-Here's an ugly probability distribution.  Note that, in addition to being wiggly, we don't actually know how to scale the y-axis so that the distribution sums to 1.
-  
+Here's an ugly function that we could treat as a probability distribution.  Note that, in addition to being wiggly, we don't actually know how to scale the y-axis so that the distribution sums to 1.
+
+
+```r
+f = function(x) {
+    (sin(0.2 * x^3) + sin(x^2)/5 + 2.5 + sin(10 * x)/2) * dnorm(x, mean = 1)
+}
+
+min.x = -6
+max.x = 6
+```
+
+
+
 ![plot of chunk show-plot](figure/show-plot.png) 
 
 
@@ -30,11 +43,11 @@ Even if you knew the equation that generated that thing, and you remembered ever
 
 ```r
 N = 1e+07
-ceiling = max(f(xs) + 1)
+ceiling = 2
 
 # Step 1: Throw N darts (uniformly distributed x-y pairs) at the plot
 # above.
-test.xs = runif(N, min = min(xs), max = max(xs))
+test.xs = runif(N, min = min.x, max = max.x)
 test.ys = runif(N, min = 0, max = ceiling)
 
 
@@ -42,7 +55,7 @@ test.ys = runif(N, min = 0, max = ceiling)
 accepted.samples = test.xs[test.ys < f(test.xs)]
 
 # Step 3: Study the samples however you want
-hist(accepted.samples, breaks = 150, xlim = range(xs), freq = FALSE)
+hist(accepted.samples, breaks = 150, xlim = c(min.x, max.x), freq = FALSE)
 ```
 
 ![plot of chunk rejection-sampler](figure/rejection-sampler.png) 
@@ -53,29 +66,25 @@ mean(accepted.samples)
 ```
 
 ```
-## [1] 1.055
+## [1] 1.056
 ```
 
 ```r
 
-quantile(accepted.samples, probs = seq(0, 1, length = 25))
+quantile(accepted.samples, probs = seq(0, 1, length = 10))
 ```
 
 ```
-##       0%   4.167%   8.333%    12.5%   16.67%   20.83%      25%   29.17% 
-## -3.76101 -0.63020 -0.32693 -0.05038  0.12511  0.26349  0.41607  0.57226 
-##   33.33%    37.5%   41.67%   45.83%      50%   54.17%   58.33%    62.5% 
-##  0.69066  0.78801  0.88096  0.98307  1.10093  1.21447  1.31154  1.39900 
-##   66.67%   70.83%      75%   79.17%   83.33%    87.5%   91.67%   95.83% 
-##  1.48678  1.58418  1.70213  1.83408  1.96193  2.09328  2.27571  2.61357 
-##     100% 
-##  5.78968
+##      0%  11.11%  22.22%  33.33%  44.44%  55.56%  66.67%  77.78%  88.89% 
+## -3.7610 -0.1345  0.3116  0.6909  0.9477  1.2494  1.4869  1.7900  2.1431 
+##    100% 
+##  5.7897
 ```
 
 
 Intuitively, it should be clear that this works: wherever the curve is tallest, there's a higher probability that the darts will be retained.
 
-That worked pretty well, but it was kind of inefficient--we ended up throwing away more than 90% of our sampling effort because the darts sailed right over the probability distribution.
+That worked pretty well, but it was kind of inefficient--we ended up throwing away almost 90% of our sampling effort because the darts sailed right over the probability distribution.
 
 Of course, this is a toy example.  It turns out that you may end up throwing away exponentially more attempts per successful sample as the number of dimensions in your data goes up.  So hardly anyone uses rejection sampling without a good reason--that's where the Markov chains come in.
 
@@ -97,7 +106,8 @@ lik = function(x, y) {
     dnorm(x - 3) * dnorm(y - x + 2)
 }
 
-grid = expand.grid(x = xs, y = xs)
+grid.values = seq(min.x, max.x, length = 500)
+grid = expand.grid(x = grid.values, y = grid.values)
 z = lik(grid$x, grid$y)
 
 gaussian.plot = ggplot(data = grid, aes(x = x, y = y)) + geom_raster(aes(fill = z)) + 
@@ -160,7 +170,7 @@ Here's what you get after running it for 10,000 iterations (about a second on my
 
 
 ```
-## Warning: Removed 20 rows containing non-finite values (stat_density2d).
+## Warning: Removed 23 rows containing non-finite values (stat_density2d).
 ```
 
 ![plot of chunk MH3](figure/MH3.png) 
